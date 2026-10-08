@@ -77,7 +77,7 @@ p, h1, h2, h3 { margin: 0; }
 .header-left, .header-right { display: flex; align-items: center; gap: 26px; }
 .header-context { color: #938999; font-size: 11px; display: flex; align-items: center; gap: 8px; letter-spacing: -.15px; }
 .status-dot { display: inline-block; width: 5px; height: 5px; border-radius: 50%; background: #98aaa0; box-shadow: 0 0 0 3px #98aaa00c; flex-shrink: 0; }
-.privacy-indicator { color: #a298a8; font-size: 10px; display: flex; gap: 5px; align-items: center; }
+.privacy-indicator { border: 0; background: none; padding: 0; color: #a298a8; font-size: 10px; display: flex; gap: 5px; align-items: center; }
 .header-profile { display: flex; align-items: center; gap: 10px; border: 1px solid #e6deea; border-radius: 6px; font-size: 10px; color: #8f779e; padding: 8px 11px; }
 .header-profile:hover { background: #f2edf5; }
 .workspace-body { display: grid; grid-template-columns: minmax(0, 1fr) 280px; flex: 1; min-height: 0; }
@@ -96,7 +96,7 @@ p, h1, h2, h3 { margin: 0; }
 .star-two { bottom: 13px; left: 12px; font-size: 12px; }
 .star-three { bottom: 13px; right: 13px; font-size: 23px; color: #d4b993; }
 .eyebrow { font-size: 8px; font-family: Georgia, serif; color: #ac99b8; letter-spacing: 2px; }
-.welcome h1 { font-size: clamp(29px, 2.6vw, 39px); line-height: 1.52; letter-spacing: -1.65px; font-weight: 500; margin-top: 14px; color: #4c4251; }
+.welcome h1 { font-size: clamp(29px, 2.6vw, 39px); line-height: 1.52; letter-spacing: -1.65px; font-weight: 500; margin-top: 14px; color: #4c4251; word-break: keep-all; }
 .welcome h1 > span { color: #9b80ad; }
 .welcome-description { font-size: 12px; color: #9b909f; line-height: 1.95; margin-top: 16px; letter-spacing: -.15px; }
 .welcome-divider { display: flex; align-items: center; gap: 13px; width: 114px; color: #c6b5d1; margin: 26px auto 28px; }
@@ -501,3 +501,11 @@ p, h1, h2, h3 { margin: 0; }
   .modal-heading > p { font-size: 11px; }
   .quota-explanation p { font-size: 9px; }
 }
+
+.birth-time-field { border: 0; padding: 0; margin: 0; min-width: 0; }
+.birth-time-field legend { color: #8a6a9b; font-size: 12px; padding: 0; }
+.birth-time-grid { display: grid; grid-template-columns: 1.2fr 1fr 1fr; gap: 10px; margin-top: 10px; }
+.birth-time-grid label { display: block; min-width: 0; color: #8a6a9b; font-size: 11px; }
+.birth-time-grid select { cursor: pointer; padding-inline: 6px; }
+.birth-time-grid select:disabled { background: #f1ecef; color: #a394ac; cursor: not-allowed; }
+.birth-time-field input[type="hidden"] { display: none; }

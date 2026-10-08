@@ -5,7 +5,8 @@ const signs = ["양자리", "황소자리", "쌍둥이자리", "게자리", "사
 const longitude = (body: { sign: string; degree: number }) => Math.max(0, signs.indexOf(body.sign)) * 30 + body.degree;
 const point = (degrees: number, radius: number) => {
   const angle = (degrees - 90) * Math.PI / 180;
-  return { x: 150 + Math.cos(angle) * radius, y: 150 + Math.sin(angle) * radius };
+  // Match SVG attributes across server and browser math implementations.
+  return { x: Number((150 + Math.cos(angle) * radius).toFixed(4)), y: Number((150 + Math.sin(angle) * radius).toFixed(4)) };
 };
 
 export function StarWheel({ chart }: { chart?: Chart }) {
@@ -26,7 +27,7 @@ export function StarWheel({ chart }: { chart?: Chart }) {
     {moon && <><circle cx={moon.x} cy={moon.y} r="10" fill="#ede6f4" stroke="#b4a0c9" strokeWidth="0.7" /><text x={moon.x} y={moon.y + 4} textAnchor="middle" fontSize="14" fill="#9b83b6">☾</text></>}
     {ascendant && <text x={ascendant.x} y={ascendant.y + 3} textAnchor="middle" fontSize="8" fill="#97a081">ASC</text>}
     <text x="150" y="145" textAnchor="middle" fill="#8b74a1" fontSize="22" fontFamily="Georgia, serif">✧</text>
-    <text x="150" y="169" textAnchor="middle" fill="#ae9dbc" fontSize="7" letterSpacing="2.2">YOUR UNIVERSE</text>
+    <text x="150" y="169" textAnchor="middle" fill="#ae9dbc" fontSize="7" letterSpacing="2.2">BIRTH CHART</text>
     <circle cx="150" cy="10" r="2" fill="#b99fca" /><circle cx="150" cy="290" r="2" fill="#b99fca" />
   </svg>;
 }

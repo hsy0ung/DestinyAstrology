@@ -332,7 +332,7 @@ export function reserveConversation(
       freeDay = day;
     } else {
       const debit = db().prepare("UPDATE users SET paid_credits = paid_credits - 1 WHERE id = ? AND paid_credits > 0").run(userId);
-      if (!debit.changes) return new DbError(mode === "deep" ? "심화 대화에는 추가 대화권이 필요합니다." : "오늘의 무료 대화를 모두 사용했습니다.", "LIMIT", 402);
+      if (!debit.changes) return new DbError(mode === "deep" ? "심화 대화에는 대화 이용권이 필요합니다." : "오늘의 무료 대화를 모두 사용했습니다. 추가 대화에는 대화 이용권이 필요합니다.", "LIMIT", 402);
     }
     const id = randomUUID();
     db().prepare(`

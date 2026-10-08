@@ -62,7 +62,7 @@ test("unknown time omits hour/ascendant and omits Moon on a lunar sign transitio
   assert.equal(stable.ascendant, null);
   assert.equal(stable.moon?.sign, "전갈자리");
   assert.equal(transition.moon, null);
-  assert.ok(transition.notes.some((note) => note.includes("달자리를 확정할 수 없습니다")));
+  assert.ok(transition.notes.some((note) => note.includes("달 별자리를 확정할 수 없습니다")));
   assert.equal(stable.elements.reduce((total, element) => total + element.count, 0), 6);
 });
 
@@ -84,8 +84,13 @@ test("demo answers disclose the source and adapt chart interpretation and concre
     assert.equal(answer.source, "demo");
     assert.match(answer.answer.summary, /실제 AI 대화가 아닌/);
     assert.match(answer.answer.saju, /신금/);
+    assert.doesNotMatch(answer.answer.personality, /신금\(辛金\)와/);
     assert.ok(answer.answer.actions.some((action) => action.includes("실제 공고")));
     assert.equal(answer.answer.actions.length, 4);
+    const aries = await generateAdvice("새로운 일이 고민입니다", "standard", base, { ...calculateChart(base), sun: { sign: "양자리", degree: 15 } }, []);
+    assert.doesNotMatch(`${aries.answer.personality} ${aries.answer.integration}`, /시도을/);
+    await assert.rejects(() => generateAdvice("고민", "standard", base, calculateChart(base), []), /5~2,000자/);
+    await assert.rejects(() => generateAdvice("가".repeat(2001), "standard", base, calculateChart(base), []), /5~2,000자/);
   } finally {
     if (previous === undefined) delete process.env.ASTRO_AI_API_KEY;
     else process.env.ASTRO_AI_API_KEY = previous;
@@ -120,9 +125,9 @@ test("all providers parse structured answers without transmitting the birth prof
     }
     process.env.ASTRO_AI_PROVIDER = "openai";
     globalThis.fetch = async () => new Response(JSON.stringify({ choices: [{ message: { content: JSON.stringify({ summary: "invalid" }) } }] }));
-    await assert.rejects(() => generateAdvice("고민", "standard", base, calculateChart(base), []), /답변 형식/);
+    await assert.rejects(() => generateAdvice("고민이 있습니다", "standard", base, calculateChart(base), []), /답변 형식/);
     globalThis.fetch = async () => new Response("sensitive provider body", { status: 401 });
-    await assert.rejects(() => generateAdvice("고민", "standard", base, calculateChart(base), []), /연결 설정/);
+    await assert.rejects(() => generateAdvice("고민이 있습니다", "standard", base, calculateChart(base), []), /연결 설정/);
   } finally {
     globalThis.fetch = originalFetch;
     for (const [name, value] of [["ASTRO_AI_API_KEY", oldKey], ["ASTRO_AI_PROVIDER", oldProvider], ["ASTRO_AI_MODEL", oldModel]]) {
