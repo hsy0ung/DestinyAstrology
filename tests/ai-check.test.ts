@@ -23,7 +23,7 @@ const validAdvice = {
 };
 
 type Call = { url: string; headers: Record<string, string>; body: Record<string, unknown> };
-type Scenario = "success" | "unauthorized" | "invalid-json";
+type Scenario = "success" | "unauthorized" | "invalid-json" | "forbidden" | "restricted-region" | "insufficient-quota" | "rate-limited" | "missing-model" | "malicious-code" | "non-json-error";
 function runCheck(hasKey: boolean, scenario: Scenario, verify: (result: ReturnType<typeof spawnSync>, calls: Call[], directory: string) => void) {
   const directory = mkdtempSync(join(tmpdir(), "destiny-ai-check-"));
   try {
@@ -39,13 +39,26 @@ function runCheck(hasKey: boolean, scenario: Scenario, verify: (result: ReturnTy
     writeFileSync(preloadPath, `
       import { appendFileSync } from "node:fs";
       const scenario = ${JSON.stringify(scenario)};
+      const failures = {
+        unauthorized: { status: 401, code: "invalid_api_key" },
+        forbidden: { status: 403 },
+        "restricted-region": { status: 403, code: "unsupported_country_region_territory" },
+        "insufficient-quota": { status: 429, code: "insufficient_quota" },
+        "rate-limited": { status: 429, code: "rate_limit_exceeded" },
+        "missing-model": { status: 404, code: "model_not_found" },
+        "malicious-code": { status: 401, code: ${JSON.stringify(dummyKey + ":" + providerPrivateBody)} },
+      };
       globalThis.fetch = async (input, init) => {
         appendFileSync(${JSON.stringify(capturePath)}, JSON.stringify({
           url: String(input), headers: Object.fromEntries(new Headers(init?.headers)),
           body: JSON.parse(String(init?.body)),
         }) + "\\n");
-        if (scenario === "unauthorized") {
-          return new Response(JSON.stringify({ error: ${JSON.stringify(providerPrivateBody)}, credential: ${JSON.stringify(dummyKey)} }), { status: 401 });
+        if (failures[scenario]) {
+          const failure = failures[scenario];
+          return new Response(JSON.stringify({ error: { code: failure.code, message: ${JSON.stringify(providerPrivateBody)}, type: ${JSON.stringify(dummyKey)} } }), { status: failure.status });
+        }
+        if (scenario === "non-json-error") {
+          return new Response(${JSON.stringify(providerPrivateBody + ": " + dummyKey)}, { status: 502 });
         }
         if (scenario === "invalid-json") {
           return new Response(JSON.stringify({ choices: [{ message: { content: ${JSON.stringify(providerPrivateBody + ": " + dummyKey)} } }] }), { status: 200 });
@@ -72,6 +85,13 @@ function runCheck(hasKey: boolean, scenario: Scenario, verify: (result: ReturnTy
   } finally {
     rmSync(directory, { recursive: true, force: true });
   }
+}
+
+function assertFailedRequest(result: ReturnType<typeof spawnSync>, calls: Call[], status: number) {
+  assert.notEqual(result.status, 0);
+  assert.equal(calls.length, 1, "diagnostics must not automatically retry a failed provider request");
+  assert.match(String(result.stderr), new RegExp(`AI 연결 확인 실패 \\(HTTP ${status}\\)`));
+  assert.equal((String(result.stdout) + String(result.stderr)).includes("AI 연결 확인 성공"), false);
 }
 
 test("check:ai without a key fails before any provider request or account storage", () => {
@@ -115,10 +135,66 @@ test("check:ai reads its working directory's .env.local and makes exactly one st
 
 test("check:ai reports unauthorized keys without exposing credentials or provider details", () => {
   runCheck(true, "unauthorized", (result, calls) => {
-    assert.notEqual(result.status, 0);
-    assert.equal(calls.length, 1);
-    assert.match(String(result.stderr), /AI 연결 설정을 확인/);
-    assert.equal(String(result.stdout).includes("AI 연결 확인 성공"), false);
+    assertFailedRequest(result, calls, 401);
+    assert.match(String(result.stderr), /HTTP 401/);
+    assert.match(String(result.stderr), / · invalid_api_key/);
+    assert.match(String(result.stderr), /인증되지 않았습니다/);
+  });
+});
+
+test("check:ai identifies forbidden access without guessing an absent provider code", () => {
+  runCheck(true, "forbidden", (result, calls) => {
+    assertFailedRequest(result, calls, 403);
+    assert.match(String(result.stderr), /접근(?:을|이) 거부/);
+    assert.equal(String(result.stderr).includes(" · "), false);
+  });
+});
+
+test("check:ai safely reports the allowed region restriction code", () => {
+  runCheck(true, "restricted-region", (result, calls) => {
+    assertFailedRequest(result, calls, 403);
+    assert.match(String(result.stderr), / · unsupported_country_region_territory/);
+    assert.match(String(result.stderr), /접속 지역을 지원하지/);
+  });
+});
+
+test("check:ai distinguishes an exhausted API balance from a request rate limit", () => {
+  let quotaGuidance = "";
+  runCheck(true, "insufficient-quota", (result, calls) => {
+    assertFailedRequest(result, calls, 429);
+    assert.match(String(result.stderr), / · insufficient_quota/);
+    assert.match(String(result.stderr), /잔액/);
+    assert.equal(String(result.stderr).includes("요청 한도"), false);
+    quotaGuidance = String(result.stderr).split("\n")[1];
+  });
+  runCheck(true, "rate-limited", (result, calls) => {
+    assertFailedRequest(result, calls, 429);
+    assert.match(String(result.stderr), / · rate_limit_exceeded/);
+    assert.match(String(result.stderr), /요청 한도/);
+    assert.notEqual(String(result.stderr).split("\n")[1], quotaGuidance);
+  });
+});
+
+test("check:ai identifies unavailable models with only the allowed error code", () => {
+  runCheck(true, "missing-model", (result, calls) => {
+    assertFailedRequest(result, calls, 404);
+    assert.match(String(result.stderr), / · model_not_found/);
+    assert.match(String(result.stderr), /모델/);
+  });
+});
+
+test("check:ai excludes unknown provider codes even when they contain credentials", () => {
+  runCheck(true, "malicious-code", (result, calls) => {
+    assertFailedRequest(result, calls, 401);
+    assert.match(String(result.stderr), /인증되지 않았습니다/);
+    assert.equal(String(result.stderr).includes(" · "), false);
+  });
+});
+
+test("check:ai preserves the HTTP diagnosis when the provider error body is not JSON", () => {
+  runCheck(true, "non-json-error", (result, calls) => {
+    assertFailedRequest(result, calls, 502);
+    assert.equal(String(result.stderr).includes(" · "), false);
   });
 });
 

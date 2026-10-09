@@ -40,6 +40,27 @@ actions는 실행 가능한 2~5개 행동, followUp은 방향을 좁혀 주는 �
 일반 대화는 간결하게, 심화 대화는 선택지의 장단점·이번 주 행동 계획을 더 구체적으로 설명하세요.
 사주·점성술을 이유로 현실의 관계를 끊거나 일을 그만두라고 단정하지 말고, 작은 실험과 사용자의 선택권을 중심에 두세요.`;
 
+const SAFE_PROVIDER_CODES = new Set([
+  "invalid_api_key", "insufficient_quota", "rate_limit_exceeded", "model_not_found", "unsupported_country_region_territory",
+]);
+
+export class AiProviderError extends Error {
+  readonly providerStatus: number;
+  readonly providerCode?: string;
+
+  constructor(providerStatus: number, providerCode?: unknown) {
+    super(providerStatus === 429
+      ? "AI 서비스가 잠시 혼잡하거나 AI 제공업체의 사용 한도에 도달했습니다. 잠시 후 다시 시도해 주세요."
+      : providerStatus === 401 || providerStatus === 403
+        ? "AI 연결 설정을 확인해야 합니다. 관리자에게 문의해 주세요."
+        : "AI 서비스의 응답을 받지 못했습니다. 잠시 후 다시 시도해 주세요.");
+    this.name = "AiProviderError";
+    // Keep provider status separate from application HTTP errors and retain only known codes.
+    this.providerStatus = providerStatus;
+    if (typeof providerCode === "string" && SAFE_PROVIDER_CODES.has(providerCode)) this.providerCode = providerCode;
+  }
+}
+
 const ELEMENT_STYLE: Record<string, { strength: string; balance: string }> = {
   목: { strength: "새로운 방향을 탐색하고 성장 기회를 찾는 경향", balance: "여러 선택지 중 이번 주에 확인할 한 가지를 고르는 것" },
   화: { strength: "의견을 표현하고 빠르게 행동하는 경향", balance: "감정이 강해질 때 잠시 쉬고, 사실과 해석을 구분하는 것" },
@@ -126,9 +147,10 @@ async function requestProvider(provider: string, key: string, model: string, pay
     throw new Error("AI 연결이 지연되거나 중단되었습니다. 잠시 후 다시 시도해 주세요.");
   }
   if (!response.ok) {
-    if (response.status === 429) throw new Error("AI 서비스가 잠시 혼잡하거나 AI 제공업체의 사용 한도에 도달했습니다. 잠시 후 다시 시도해 주세요.");
-    if (response.status === 401 || response.status === 403) throw new Error("AI 연결 설정을 확인해야 합니다. 관리자에게 문의해 주세요.");
-    throw new Error("AI 서비스의 응답을 받지 못했습니다. 잠시 후 다시 시도해 주세요.");
+    let providerCode: unknown;
+    try { providerCode = (await response.json())?.error?.code; } catch { /* Some providers return non-JSON errors. */ }
+    // Never propagate the response message, body, headers, or unrecognized codes.
+    throw new AiProviderError(response.status, providerCode);
   }
   // Do not propagate provider bodies: they can contain user text or credential-related details.
   try {
