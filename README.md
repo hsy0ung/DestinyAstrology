@@ -56,6 +56,23 @@ npm start
 
 ## AI 연결
 
+Mac에서 실제 AI 답변을 사용하려면 API 키를 발급한 뒤 아래 명령을 실행하세요. ChatGPT 구독료와 OpenAI API 사용료는 별도입니다.
+
+1. [OpenAI API 관리 페이지](https://platform.openai.com/)에서 프로젝트를 만들고 API 결제를 설정합니다. [API 키 페이지](https://platform.openai.com/api-keys)에서 키를 발급합니다.
+2. 프로젝트 폴더에서 `npm run setup:ai`를 실행합니다. 처음에는 OpenAI를 선택하고 기본 모델을 사용하면 됩니다. API 키 입력은 터미널에 표시되지 않습니다. 키는 Git에 포함되지 않는 `.env.local`에 저장됩니다. 기존 결제·DB 설정은 유지합니다.
+3. `npm run check:ai`를 실행합니다. 가상의 출생 정보와 질문으로 실제 AI 응답 1회를 요청하고 답변 형식을 검증합니다. API 사용료가 발생하며 계정 생성이나 대화 이용권 차감은 없습니다.
+4. 실행 중인 개발 서버를 `Ctrl+C`로 종료하고 `npm run dev`로 다시 실행합니다. Mac 브라우저에서 터미널의 Local 주소를 열고 새 질문을 보내세요. 이전에 저장한 예시 답변은 그대로 표시되며, 연결 후 새 질문에는 실제 AI 답변이 표시됩니다.
+
+```bash
+npm run setup:ai
+npm run check:ai
+npm run dev
+```
+
+`setup:ai`는 OpenAI·Gemini·Claude 중 선택한 제공업체에 맞는 모델을 설정합니다. 제공업체를 바꾸면 해당 제공업체의 새 API 키를 입력해야 합니다. `check:ai`가 실패하면 오류 안내를 확인하세요. 인증 오류는 API 키와 프로젝트 권한, 사용 한도 오류는 API 결제·잔액·요청 한도를 확인해야 합니다. 연결 검증을 통과한 후 사이트 대화도 확인하세요.
+
+호스팅에 배포할 때는 같은 변수 이름을 호스팅 서비스의 환경 변수·보안 입력에 등록합니다. `.env.local`을 GitHub에 업로드하거나 API 키를 채팅에 보내지 마세요.
+
 `.env.example`에는 변수 이름과 기본값만 있습니다. 로컬에서는 `.env.local`, 클라우드에서는 환경 설정의 보안 입력을 사용하세요.
 
 | 변수 | 용도 |

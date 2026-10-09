@@ -9,10 +9,13 @@
     "typecheck": "tsc --noEmit",
     "test": "tsx --test tests/*.test.ts",
     "test:smoke": "node scripts/smoke.mjs",
-    "test:browser": "node scripts/browser-smoke.mjs"
+    "test:browser": "node scripts/browser-smoke.mjs",
+    "setup:ai": "node scripts/setup-ai.mjs",
+    "check:ai": "tsx scripts/check-ai.ts"
   },
   "engines": { "node": ">=24.0.0 <25" },
   "dependencies": {
+    "@next/env": "16.4.0",
     "next": "16.4.0",
     "react": "19.3.0",
     "react-dom": "19.3.0",
